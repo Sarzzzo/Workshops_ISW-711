@@ -1,116 +1,96 @@
-/**
- * Controlador de Cursos
- * Maneja las operaciones CRUD para la entidad Course
- */
+const Curso = require('../../models/Curso');
+const Profesor = require('../../models/Profesor');
 
-const Course = require("../models/courseModel");
-
-/**
- * Crear un nuevo curso
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
-const coursePost = async (req, res) => {
-    const data = new Course({
-        name: req.body.name,
-        credits: req.body.credits
+// POST - Crear un nuevo curso
+const crearCurso = async (req, res) => {
+    const curso = new Curso({
+        nombre: req.body.nombre,
+        codigo: req.body.codigo,
+        descripcion: req.body.descripcion,
+        profesorId: req.body.profesorId
     });
 
     try {
-        const dataToSave = await data.save();
-        res.status(201).json(dataToSave);
+        // Verificar que el profesor existe
+        const profesorExiste = await Profesor.findById(req.body.profesorId);
+        if (!profesorExiste) {
+            return res.status(404).json({ message: 'El profesor especificado no existe' });
+        }
+
+        const cursoGuardado = await curso.save();
+        res.status(200).json(cursoGuardado);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
 
-/**
- * Obtener todos los cursos
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
-const courseGet = async (req, res) => {
+// GET - Obtener todos los cursos (con información del profesor)
+const obtenerCursos = async (req, res) => {
     try {
-        const data = await Course.find();
-        res.json(data);
+        // populate() trae los datos completos del profesor en lugar de solo el ID
+        const cursos = await Curso.find().populate('profesorId');
+        res.json(cursos);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-/**
- * Obtener un curso por ID
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
-const courseGetOne = async (req, res) => {
+// GET - Obtener un curso por ID (con información del profesor)
+const obtenerCursoPorId = async (req, res) => {
     try {
-        const data = await Course.findById(req.params.id);
-        res.json(data);
+        const curso = await Curso.findById(req.params.id).populate('profesorId');
+        if (!curso) {
+            return res.status(404).json({ message: 'Curso no encontrado' });
+        }
+        res.json(curso);
     } catch (error) {
         res.status(500).json({ message: error.message });
     }
 };
 
-/**
- * Actualizar parcialmente un curso (PATCH)
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
-const coursePatch = async (req, res) => {
+// PUT - Actualizar un curso por ID
+const actualizarCurso = async (req, res) => {
     try {
         const id = req.params.id;
-        const updatedData = req.body;
-        const options = { new: true };
+        const datosActualizados = req.body;
 
-        const result = await Course.findByIdAndUpdate(id, updatedData, options);
-        res.json(result);
+        // Si se está actualizando el profesorId, verificar que existe
+        if (datosActualizados.profesorId) {
+            const profesorExiste = await Profesor.findById(datosActualizados.profesorId);
+            if (!profesorExiste) {
+                return res.status(404).json({ message: 'El profesor especificado no existe' });
+            }
+        }
+
+        const opciones = { new: true };
+        const resultado = await Curso.findByIdAndUpdate(id, datosActualizados, opciones).populate('profesorId');
+        if (!resultado) {
+            return res.status(404).json({ message: 'Curso no encontrado' });
+        }
+        res.json(resultado);
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
 
-/**
- * Actualizar completamente un curso (PUT)
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
-const coursePut = async (req, res) => {
+// DELETE - Eliminar un curso por ID
+const eliminarCurso = async (req, res) => {
     try {
         const id = req.params.id;
-        const updatedData = {
-            name: req.body.name,
-            credits: req.body.credits
-        };
-        const options = { new: true };
-
-        const result = await Course.findByIdAndUpdate(id, updatedData, options);
-        res.json(result);
-    } catch (error) {
-        res.status(400).json({ message: error.message });
-    }
-};
-
-/**
- * Eliminar un curso
- * @param {Object} req - Request object
- * @param {Object} res - Response object
- */
-const courseDelete = async (req, res) => {
-    try {
-        const id = req.params.id;
-        const data = await Course.findByIdAndDelete(id);
-        res.json({ message: `Course "${data.name}" has been deleted`, course: data });
+        const curso = await Curso.findByIdAndDelete(id);
+        if (!curso) {
+            return res.status(404).json({ message: 'Curso no encontrado' });
+        }
+        res.json({ message: `Curso ${curso.nombre} ha sido eliminado` });
     } catch (error) {
         res.status(400).json({ message: error.message });
     }
 };
 
 module.exports = {
-    courseGet,
-    courseGetOne,
-    coursePost,
-    coursePatch,
-    coursePut,
-    courseDelete
-}
+    crearCurso,
+    obtenerCursos,
+    obtenerCursoPorId,
+    actualizarCurso,
+    eliminarCurso
+};
