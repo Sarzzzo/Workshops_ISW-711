@@ -63,7 +63,7 @@ const actualizarCurso = async (req, res) => {
         }
 
         const opciones = { new: true };
-        const resultado = await Curso.findByIdAndUpdate(id, datosActualizados, opciones).populate('profesorId');
+        const resultado = await Curso.findByIdAndUpdate(id, datosActualizados, opciones).p opulate('profesorId');
         if (!resultado) {
             return res.status(404).json({ message: 'Curso no encontrado' });
         }
